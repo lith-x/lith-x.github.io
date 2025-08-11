@@ -1,0 +1,87 @@
+---
+import "../styles/global.css";
+import githubLogo from "../../public/github-mark-white.svg";
+import { Image } from "astro:assets";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Site for Aaron :)</title>
+  </head>
+  <body>
+    <div class="name-header">
+      <h1 class="glow-anim">Aaron Zandt</h1>
+      <a href="https://github.com/lith-x">
+        <Image
+          src={githubLogo}
+          alt="GitHub Profile"
+          class="gh-logo glow-anim"
+        />
+      </a>
+    </div>
+    <br />
+    <h2>About me</h2>
+    <ul>
+      <li>
+        Inspired by a friend in middle school making websites, I began with
+        HTML, then quickly moved onto learning the basics of programming with
+        Python.
+      </li>
+      <li>
+        Went on to learn Typescript and other technologies regarding web
+        development (webpack, I think it was), with plugins galore to try to
+        make the DevEx similar to what vite is today. Picked up other languages
+        like Java through Minecraft modding.
+      </li>
+      <li>
+        Went to university where I honed in on several skills and idioms, like
+        OOP, Java, Python, Assembly, C, C++. All the way through using
+        Typescript with <a href="https://tsx.is/">tsx</a> as a handy scripting language.
+      </li>
+      <li>
+        After years of going in and out of school to work and trying to find my
+        way in life, I finally graduated from <a href="https://www.unomaha.edu/"
+          >UNO</a
+        > with a Bachelor's in CompSci with a minor in mathematics.
+      </li>
+      <li>
+        Recently inspired by the Youtube channel <a
+          href="https://www.youtube.com/@TsodingDaily">Tsoding Daily</a
+        > and subsequently Casey Muratori's <a
+          href="https://www.youtube.com/playlist?list=PLnuhp3Xd9PYTt6svyQPyRO_AAuMWGxPzU"
+          >Handmade Hero</a
+        >, where I found my interest in C programming with the philosophy of
+        ground-up understanding, intentful design and architecture,
+        performance-oriented procedural code.
+      </li>
+      <li>
+        Now trying to get around to work on things to show off and improve on as
+        a developer. :)
+      </li>
+    </ul>
+    <br /><br />
+    <h2>Projects</h2>
+    <ul>
+      <li>
+        <span class="project-name"
+          ><a href="https://github.com/lith-x/Capstone-project"
+            >Capstone project</a
+          ></span
+        > - For my capstone, I worked with a lovely team for Northrop Grumman. We
+        collaborated on creating a plugin for the Android application <a
+          href="https://tak.gov/">ATAK</a
+        > to geolocate devices outside the network through Bluetooth signalling.
+      </li>
+      <li>
+        <span class="project-name"
+          ><a href="https://github.com/lith-x/leetcode">Leet code</a></span
+        > - A repository of leet code problems that have required local development
+        and/or debugging across multiple platforms.
+      </li>
+    </ul>
+  </body>
+</html>
