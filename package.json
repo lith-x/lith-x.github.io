@@ -13,5 +13,12 @@
     "astro": "^5.12.3",
     "sharp": "^0.34.3",
     "tailwindcss": "^4.1.11"
+  },
+  "packageManager": "pnpm@10.14.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "sharp"
+    ]
   }
 }
