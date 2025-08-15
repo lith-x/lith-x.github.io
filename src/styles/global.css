@@ -5,57 +5,8 @@ html {
   height: 100%;
 }
 
-body {
-  background: linear-gradient(
-      to top right,
-      var(--color-black) 50%,
-      var(--color-purple-900) 80%,
-      var(--color-purple-950) 95%
-    ),
-    var(--color-black);
-  background-repeat: no-repeat;
-  color: var(--color-white);
-  padding: 5em;
-}
-
-h1 {
-  font-size: 4em;
-}
-
-h2 {
-  font-size: 2.25em;
-}
-
-ul {
-  width: 60%;
-  list-style: square outside;
-  padding-left: 2em;
-}
-
-li {
-  padding-bottom: 0.65em;
-}
-
-.project-name {
-  font-weight: bold;
-  font-style: italic;
-  font-variant: small-caps;
-}
-
 a {
   color: var(--color-gray-400);
-}
-
-.about-me-title {
-  font-weight: bold;
-}
-
-.name-header {
-  display: flex;
-}
-
-.gh-logo {
-  transform: scale(0.6, 0.6);
 }
 
 .glow-anim {

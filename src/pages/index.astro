@@ -11,44 +11,48 @@ import { Image } from "astro:assets";
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <title>Site for Aaron :)</title>
+    <script src="./background-anim.ts"></script>
   </head>
-  <body>
-    <div class="name-header">
-      <h1 class="glow-anim">Aaron Zandt</h1>
-      <a href="https://github.com/lith-x">
+  <body
+    class="h-full bg-gradient-to-tr from-black from-50% via-purple-900 via-[80%] to-purple-950 to-90% bg-black text-white bg-no-repeat p-[6vw]"
+  >
+    <canvas id="bg-canvas" class="absolute top-0 left-0 -z-10 w-screen h-screen opacity-25">Browser doesn't support canvas :/</canvas>
+    <div class="flex ">
+      <a class="self-center" href="https://github.com/lith-x">
         <Image
           src={githubLogo}
           alt="GitHub Profile"
-          class="gh-logo glow-anim"
+          class="gh-logo glow-anim scale-[0.55]"
         />
       </a>
+      <h1 class="text-7xl glow-anim self-center">Aaron Zandt</h1>
     </div>
     <br />
-    <h2>About me</h2>
-    <ul>
-      <li>
+    <h2 class="text-4xl pb-4">About me</h2>
+    <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
+      <li class="pb-3.5">
         Inspired by a friend in middle school making websites, I began with
         HTML, then quickly moved onto learning the basics of programming with
         Python.
       </li>
-      <li>
+      <li class="pb-3.5">
         Went on to learn Typescript and other technologies regarding web
-        development (webpack, I think it was), with plugins galore to try to
+        development (webpack, et al.), with plugins galore to try to
         make the DevEx similar to what vite is today. Picked up other languages
         like Java through Minecraft modding.
       </li>
-      <li>
+      <li class="pb-3.5">
         Went to university where I honed in on several skills and idioms, like
         OOP, Java, Python, Assembly, C, C++. All the way through using
         Typescript with <a href="https://tsx.is/">tsx</a> as a handy scripting language.
       </li>
-      <li>
+      <li class="pb-3.5">
         After years of going in and out of school to work and trying to find my
         way in life, I finally graduated from <a href="https://www.unomaha.edu/"
           >UNO</a
         > with a Bachelor's in CompSci with a minor in mathematics.
       </li>
-      <li>
+      <li class="pb-3.5">
         Recently inspired by the Youtube channel <a
           href="https://www.youtube.com/@TsodingDaily">Tsoding Daily</a
         > and subsequently Casey Muratori's <a
@@ -58,30 +62,30 @@ import { Image } from "astro:assets";
         ground-up understanding, intentful design and architecture,
         performance-oriented procedural code.
       </li>
-      <li>
+      <li class="pb-3.5">
         Now trying to get around to work on things to show off and improve on as
         a developer. :)
       </li>
     </ul>
-    <br /><br />
-    <h2>Projects</h2>
-    <ul>
-      <li>
-        <span class="project-name"
-          ><a href="https://github.com/lith-x/Capstone-project"
-            >Capstone project</a
-          ></span
+    <h2 class="text-4xl pb-4">Projects</h2>
+    <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
+      <li class="pb-3.5">
+        <a
+          class="font-bold italic [font-variant:small-caps]"
+          href="https://github.com/lith-x/Capstone-project">Capstone project</a
         > - For my capstone, I worked with a lovely team for Northrop Grumman. We
         collaborated on creating a plugin for the Android application <a
           href="https://tak.gov/">ATAK</a
         > to geolocate devices outside the network through Bluetooth signalling.
       </li>
-      <li>
-        <span class="project-name"
-          ><a href="https://github.com/lith-x/leetcode">Leet code</a></span
+      <li class="pb-3.5">
+        <a
+          class="font-bold italic [font-variant:small-caps]"
+          href="https://github.com/lith-x/leetcode">Leet code</a
         > - A repository of leet code problems that have required local development
         and/or debugging across multiple platforms.
       </li>
     </ul>
   </body>
+  <script src="./background-anim.ts"></script>
 </html>
