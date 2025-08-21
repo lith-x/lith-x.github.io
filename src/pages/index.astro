@@ -15,8 +15,12 @@ import { Image } from "astro:assets";
   <body
     class="h-full bg-gradient-to-tr from-black from-50% via-purple-900 via-[80%] to-purple-950 to-90% bg-black text-white bg-no-repeat p-[6vw]"
   >
-    <canvas id="bg-canvas" class="absolute top-0 left-0 -z-10 w-screen h-screen opacity-25">Browser doesn't support canvas :/</canvas>
-    <div class="flex ">
+    <canvas
+      id="bg-canvas"
+      class="fixed top-0 left-0 w-screen h-screen block -z-10"
+      >Browser doesn't support canvas :/</canvas
+    >
+    <div class="flex">
       <a class="self-center" href="https://github.com/lith-x">
         <Image
           src={githubLogo}
@@ -36,9 +40,9 @@ import { Image } from "astro:assets";
       </li>
       <li class="pb-3.5">
         Went on to learn Typescript and other technologies regarding web
-        development (webpack, et al.), with plugins galore to try to
-        make the DevEx similar to what vite is today. Picked up other languages
-        like Java through Minecraft modding.
+        development (webpack, et al.), with plugins galore to try to make the
+        DevEx similar to what vite is today. Picked up other languages like Java
+        through Minecraft modding.
       </li>
       <li class="pb-3.5">
         Went to university where I honed in on several skills and idioms, like
@@ -86,5 +90,4 @@ import { Image } from "astro:assets";
       </li>
     </ul>
   </body>
-  <!-- <script src="./background-anim.ts"></script> -->
 </html>

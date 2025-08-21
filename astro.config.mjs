@@ -8,5 +8,5 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()]
   },
-  site: 'https://lithx.dev/',
+  site: 'https://lithx.dev/'
 });
