@@ -1,18 +1,18 @@
 #version 300 es
 precision highp float;
 
-in vec3 vBarycentric;
-in vec3 vColor;
+in vec3 v_barycentric;
+in vec3 v_color;
 
 out vec4 fragColor;
 
 // Controls how thick the wireframe edges are
-uniform float uLineWidth; // e.g. 0.05
+uniform float u_lineWidth; // e.g. 0.05
 
 // Helper: find min distance to an edge
 float edgeFactor() {
-    vec3 d = fwidth(vBarycentric);
-    vec3 a3 = smoothstep(vec3(0.0), d * uLineWidth, vBarycentric);
+    vec3 d = fwidth(v_barycentric);
+    vec3 a3 = smoothstep(vec3(0.0), d * u_lineWidth, v_barycentric);
     return min(min(a3.x, a3.y), a3.z);
 }
 
@@ -21,7 +21,7 @@ void main() {
 
     // edge ~ 0 near edges, ~1 inside face
     if (edge < 0.5) {
-        fragColor = vec4(vColor, 1.0); // draw edge
+        fragColor = vec4(v_color, 1.0); // draw edge
     } else {
         discard; // transparent background
     }
