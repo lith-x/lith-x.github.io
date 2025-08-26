@@ -1,4 +1,34 @@
-import * as twgl from "twgl.js"
+import * as twgl from "twgl.js";
+
+const vertShaderSrc = `#version 300 es
+in vec3 position;
+in vec3 instanceCenter;
+in vec3 instanceColor;
+in float instanceSize;
+
+uniform mat4 u_view;
+uniform mat4 u_proj;
+
+out vec3 v_color;
+
+// TODO: test more math out in here using gl_InstanceID, see if that gets
+// more performance.
+
+void main() {
+    vec3 scaledPos = position * instanceSize + instanceCenter;
+    gl_Position = u_proj * u_view * vec4(scaledPos, 1.0);
+    v_color = instanceColor;
+}`;
+
+const fragShaderSrc = `#version 300 es
+precision highp float;
+
+in vec3 v_color;
+out vec4 outColor;
+
+void main() {
+    outColor = vec4(v_color, 1.0);
+}`;
 
 const CENTER = twgl.v3.create(0, 0, 0);
 const EPSILON = 1e-6; // from raymath
@@ -56,7 +86,7 @@ const Direction = {
 
 type DirVals = typeof Direction[keyof typeof Direction];
 
-type Freelist = { head: number, tail: number }
+type Freelist = [head: number, tail: number];
 
 // ------------------------------------------
 
@@ -86,16 +116,16 @@ const initFreelist = (frie: Freelist, bullets: PointBufferArray) => {
     for (let i = 0; i < BULLET_COUNT - 1; i++)
         bullets.nextFreeOrSpawned[i] = i + 1;
     bullets.nextFreeOrSpawned[BULLET_COUNT - 1] = LIST_END;
-    frie.head = 0;
-    frie.tail = BULLET_COUNT - 1;
+    frie[0] = 0;
+    frie[1] = BULLET_COUNT - 1;
 };
 
 const spawnPoint = (freelist: Freelist, points: PointBufferArray) => {
-    if (freelist.head == LIST_END) return LIST_END;
-    const idx = freelist.head;
-    freelist.head = points.nextFreeOrSpawned[idx];
-    if (freelist.head == LIST_END)
-        freelist.tail = LIST_END;
+    if (freelist[0] == LIST_END) return LIST_END;
+    const idx = freelist[0];
+    freelist[0] = points.nextFreeOrSpawned[idx];
+    if (freelist[0] == LIST_END)
+        freelist[1] = LIST_END;
     points.nextFreeOrSpawned[idx] = IS_SPAWNED;
 
     const [bx, by, bz] = getVec3Idx(idx);
@@ -105,7 +135,7 @@ const spawnPoint = (freelist: Freelist, points: PointBufferArray) => {
     points.colors[by] = (0x51 / 255) * lerpA + (0x0C / 255) * lerpB;
     points.colors[bz] = (0x08 / 255) * lerpA + (0xCF / 255) * lerpB;
 
-    points.directions[idx] = (1 << (Math.floor(Math.random() * Direction.LEN))) as DirVals;
+    points.directions[idx] = 1 << (Math.floor(Math.random() * Direction.LEN)) as DirVals;
     points.signs[idx] = points.directions[idx] & (Direction.PX | Direction.PY | Direction.PZ) ? 1 : -1;
     points.activeIdx[idx] = points.directions[idx] & (Direction.PX | Direction.NX) ? bx
         : points.directions[idx] & (Direction.PY | Direction.NY) ? by : bz;
@@ -130,11 +160,11 @@ const freeBullet = (freelist: Freelist, points: PointBufferArray, idx: number) =
     points.positions[vy] = Number.MAX_VALUE;
     points.positions[vz] = Number.MAX_VALUE;
     points.nextFreeOrSpawned[idx] = LIST_END;
-    if (freelist.tail != LIST_END)
-        points.nextFreeOrSpawned[freelist.tail] = idx;
+    if (freelist[1] != LIST_END)
+        points.nextFreeOrSpawned[freelist[1]] = idx;
     else
-        freelist.head = idx;
-    freelist.tail = idx;
+        freelist[0] = idx;
+    freelist[1] = idx;
 };
 
 const worldToIndex = (coord: number, basePos: number, maxIdx: number) => {
@@ -142,6 +172,7 @@ const worldToIndex = (coord: number, basePos: number, maxIdx: number) => {
     // issue.
     const ret = Math.ceil((coord - basePos) / (CUBE_SIZE + CUBE_PADDING));
     return ret > maxIdx ? maxIdx : ret < 0 ? 0 : ret;
+    // todo: revisit this to see what's up, why it broke, so it just naturally gives the correct val at correct range without clamping
 }
 
 const getBulletBoundingBox = (points: PointBufferArray, idx: number) => {
@@ -176,7 +207,7 @@ const isOutOfBounds = (bullets: PointBufferArray, idx: number) => {
     }
 };
 
-// ------------ Raylib ports ---------------
+// ------------ rendering fns ---------------
 
 type Vector3 = { x: number, y: number, z: number };
 type Camera = {
@@ -193,12 +224,66 @@ const UpdateCamera = (camera: Camera) => {
 
 // -----------------------------------------
 
-const main = () => {
+export const main = async () => {
     const gl = (document.getElementById("bg-canvas") as HTMLCanvasElement).getContext("webgl2");
     if (!gl) return;
+    twgl
+    // todo: upload cubePositions to VAO.
+
+    // todo: constants
+    let spawnTimer = PRNG.nextRange(0, 1);
+
+    const maxInstances = BULLET_COUNT * 100; // safe upper bound
+
+    // ------ gl setup ------
+    const progInfo = twgl.createProgramInfo(gl, [vertShaderSrc, fragShaderSrc]);
+    const instanceCenters = new Float32Array(maxInstances * 3);
+    const instanceColors = new Float32Array(maxInstances * 3);
+    const instanceSizes = new Float32Array(maxInstances);
+    const cubeBufferInfo = twgl.createBufferInfoFromArrays(gl, {
+        position: {
+            numComponents: 3,
+            data: [
+                // 8 corners
+                -0.5, -0.5, -0.5, // 0
+                0.5, -0.5, -0.5,  // 1
+                0.5, 0.5, -0.5,   // 2
+                -0.5, 0.5, -0.5,  // 3
+                -0.5, -0.5, 0.5,  // 4
+                0.5, -0.5, 0.5,   // 5
+                0.5, 0.5, 0.5,    // 6
+                -0.5, 0.5, 0.5,   // 7
+            ]
+        },
+        indices: [
+            // bottom face
+            0, 1, 1, 2, 2, 3, 3, 0,
+            // top face
+            4, 5, 5, 6, 6, 7, 7, 4,
+            // vertical edges
+            0, 4, 1, 5, 2, 6, 3, 7,
+        ],
+        instanceCenter: {
+            numComponents: 3,
+            data: instanceCenters,
+            divisor: 1,
+        },
+        instanceColor: {
+            numComponents: 3,
+            data: instanceColors,
+            divisor: 1,
+        },
+        instanceSize: {
+            numComponents: 1,
+            data: instanceSizes,
+            divisor: 1,
+        }
+    });
+
+    const vao = twgl.createVAOAndSetAttributes(gl, progInfo.attribSetters, cubeBufferInfo.attribs!, cubeBufferInfo.indices);
 
     const points = new PointBufferArray(BULLET_COUNT);
-    const freelist: Freelist = { head: LIST_END, tail: LIST_END };
+    const freelist: Freelist = [LIST_END, LIST_END];
     initFreelist(freelist, points);
 
     const cubePositions = new Float32Array(CUBES_COUNT * 3);
@@ -218,21 +303,14 @@ const main = () => {
         }
         refPos[2] += CUBE_SIZE + CUBE_PADDING;
     }
-    // todo: upload cubePositions to VAO.
 
-    // todo: constants
-    let spawnTimer = PRNG.nextRange(0, 1);
-
-    // ------ gl setup ------
-    const progInfo = twgl.createProgramInfo(gl, ["shader.vs", "shader.fs"]);
-
-    // todo/architecture: pass around "base index" (pointing to x component) instead of doing getVec3Indices everywhere
     const render = (dt: number) => {
         if ((spawnTimer -= dt) <= 0) {
             spawnPoint(freelist, points);
             spawnTimer = PRNG.nextRange(0, 1); // todo: constants
         }
 
+        const cubeData: { centerIdx: number, colorIdx: number, size: number }[] = [];
         // todo: UpdateCamera (orbital)
         for (let i = 0; i < BULLET_COUNT; i++) {
             if (points.nextFreeOrSpawned[i] != IS_SPAWNED)
@@ -240,7 +318,6 @@ const main = () => {
             // debug: keep track of bullet count
             // bullet_count++;
 
-            const dir = points.directions[i] as DirVals;
             points.positions[points.activeIdx[i]] += dt * points.signs[i] * points.speeds[i];
             if (isOutOfBounds(points, i)) {
                 freeBullet(freelist, points, i);
@@ -249,8 +326,6 @@ const main = () => {
             // debug: visualize bullet positions
             // DrawSphereEx(points.positions[i], CUBE_SIZE / 8.0f, 4, 4,
             //              ColorFromNormalized(points.colors[i]));
-
-            const cubeData: { centerIdx: number, colorIdx: number, size: number }[] = [];
 
             const bbox = getBulletBoundingBox(points, i);
             const [vx, vy, vz] = getVec3Idx(i);
@@ -272,18 +347,51 @@ const main = () => {
                 }
             }
         }
+
+        // --- Fill instance arrays ---
+        for (let i = 0; i < cubeData.length; i++) {
+            if (i >= maxInstances) break;
+            const c = cubeData[i];
+            const offset = i * 3;
+            cubeBufferInfo.attribs!["instanceCenter"];
+            instanceCenters.set([
+                cubePositions[c.centerIdx],
+                cubePositions[c.centerIdx + 1],
+                cubePositions[c.centerIdx + 2]
+            ], offset);
+            instanceColors.set([
+                points.colors[c.colorIdx],
+                points.colors[c.colorIdx + 1],
+                points.colors[c.colorIdx + 2]
+            ], offset);
+            instanceSizes[i] = c.size;
+        }
+        // --- Upload updated instance data ---
+        twgl.setAttribInfoBufferFromArray(gl, cubeBufferInfo.attribs!.instanceCenter, instanceCenters);
+        twgl.setAttribInfoBufferFromArray(gl, cubeBufferInfo.attribs!.instanceColor, instanceColors);
+        twgl.setAttribInfoBufferFromArray(gl, cubeBufferInfo.attribs!.instanceSize, instanceSizes);
+
+        // --- Draw ---
         twgl.resizeCanvasToDisplaySize(gl.canvas as HTMLCanvasElement);
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        gl.useProgram(progInfo.program);
+        gl.clearColor(0.1, 0.1, 0.1, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+
+        gl.bindVertexArray(vao);
+        twgl.setUniforms(progInfo, {
+            u_view: twgl.m4.lookAt([10, 10, 10], [0, 0, 0], [0, 1, 0]),
+            u_proj: twgl.m4.perspective(Math.PI / 4, gl.canvas.width / gl.canvas.height, 0.1, 1000),
+        });
+        twgl.drawBufferInfo(gl, cubeBufferInfo, gl.TRIANGLES, cubeBufferInfo.numElements, 0, cubeData.length);
+        gl.bindVertexArray(null);
 
         requestAnimationFrame(render);
     };
 
     requestAnimationFrame(render);
-
 };
-
-main();
-
 
 class PointBufferArray {
     private data: ArrayBuffer;
