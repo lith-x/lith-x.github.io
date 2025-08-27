@@ -48,7 +48,7 @@ export const main = () => {
     }
     const instanceSizes = new Float32Array(INSTANCE_COUNT);
     instanceSizes.fill(1);
-    const rectArrays = {
+    const rectArrays: twgl.Arrays = {
         position: {
             numComponents: 3,
             data: [-0.1, -0.1, 0.1, //0
@@ -84,7 +84,7 @@ export const main = () => {
             data: instanceSizes
         },
 
-    } as twgl.Arrays;
+    };
     const rectBuff = twgl.createBufferInfoFromArrays(gl, rectArrays);
     const vao = twgl.createVAOFromBufferInfo(gl, progInfo, rectBuff);
     const viewMat = twgl.m4.inverse(twgl.m4.lookAt([0, 0, 2], [0, 0, 0], [0, 1, 0]));
@@ -96,10 +96,9 @@ export const main = () => {
     const render = (time: number) => {
         twgl.resizeCanvasToDisplaySize(gl.canvas as HTMLCanvasElement);
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-        // gl.clearColor(0, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         for (let i = 0; i < instanceSizes.length; i++) {
-            instanceSizes[i] = 3 + Math.sin(time / 1000) + i;
+            instanceSizes[i] = 3 + Math.sin((time + i * 600) / 1000);
         }
         twgl.setAttribInfoBufferFromArray(gl, rectBuff.attribs!.instanceCenter, instanceCenters);
         twgl.setAttribInfoBufferFromArray(gl, rectBuff.attribs!.instanceSize, instanceSizes);
