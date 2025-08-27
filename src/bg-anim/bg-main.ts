@@ -287,7 +287,7 @@ export const main = async () => {
     initFreelist(freelist, points);
 
     const cubePositions = new Float32Array(CUBES_COUNT * 3);
-    const refPos = twgl.v3.create(0, 0, Z_MIN_CUBE_CENTER);
+    const refPos = twgl.v3.create(X_MIN_CUBE_CENTER, Y_MIN_CUBE_CENTER, Z_MIN_CUBE_CENTER);
     for (let z = 0; z < CUBES_Z; z++) {
         refPos[1] = Y_MIN_CUBE_CENTER;
         for (let y = 0; y < CUBES_Y; y++) {
@@ -381,7 +381,7 @@ export const main = async () => {
 
         gl.bindVertexArray(vao);
         twgl.setUniforms(progInfo, {
-            u_view: twgl.m4.lookAt([10, 10, 10], [0, 0, 0], [0, 1, 0]),
+            u_view: twgl.m4.inverse(twgl.m4.lookAt([10, 10, 10], [0, 0, 0], [0, 1, 0])),
             u_proj: twgl.m4.perspective(Math.PI / 4, gl.canvas.width / gl.canvas.height, 0.1, 1000),
         });
         twgl.drawBufferInfo(gl, cubeBufferInfo, gl.TRIANGLES, cubeBufferInfo.numElements, 0, cubeData.length);
