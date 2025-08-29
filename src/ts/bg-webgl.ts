@@ -1,5 +1,7 @@
 import * as twgl from "twgl.js";
 
+// ---------- types, constants, helpers ----------
+
 const Direction = {
     PX: 0x01,
     NX: 0x02,
@@ -63,16 +65,6 @@ const POINT_COUNT = 10;
 
 const cubeIdx = (x: number, y: number, z: number) => CUBES_X * CUBES_Y * z + CUBES_X * y + x;
 
-const v4scratch: [r: number, g: number, b: number, a: number] = [0, 0, 0, 0];
-const getVec4Idx = (idx: number) => {
-    const base = idx * 4;
-    v4scratch[0] = base;
-    v4scratch[1] = base + 1;
-    v4scratch[2] = base + 2;
-    v4scratch[3] = base + 3;
-    return v4scratch;
-}
-
 const v3scratch: [x: number, y: number, z: number] = [0, 0, 0];
 const getVec3Idx = (idx: number) => {
     const base = idx * 3;
@@ -82,7 +74,7 @@ const getVec3Idx = (idx: number) => {
     return v3scratch;
 };
 
-// ----------------------------------------
+// -------------------- main --------------------
 
 export const main = async () => {
     const gl = (document.getElementById("bg-canvas") as HTMLCanvasElement).getContext("webgl2");
@@ -125,7 +117,7 @@ export const main = async () => {
         },
         instanceColor: {
             divisor: 1,
-            numComponents: 4,
+            numComponents: 3,
             data: cubeInstanceArray.instanceColors,
             drawType: gl.STREAM_DRAW
         },
@@ -161,6 +153,9 @@ export const main = async () => {
     const fieldOfView = 3;
     gl.useProgram(progInfo.program);
     gl.bindVertexArray(vao);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.DEPTH_TEST);
     twgl.setUniforms(progInfo, {
         u_view: twgl.m4.inverse(twgl.m4.lookAt([0, 0, maxGridSize * fieldOfView], [0, 0, 0], [0, 1, 0]))
     });
@@ -180,7 +175,7 @@ export const main = async () => {
             spawnTimer = PRNG.nextRange(Spawn.TIME.MIN, Spawn.TIME.MAX);
         }
 
-        for (let i = 0; i < POINT_COUNT; i++) {
+        for (let i = 0; i < points.count; i++) {
             if (points.isNotSpawned(i))
                 continue;
 
@@ -192,7 +187,6 @@ export const main = async () => {
 
             const bbox = points.getBoundingBox(i);
             const [px, py, pz] = getVec3Idx(i);
-            const [pr, pg, pb, pa] = getVec4Idx(i);
             for (let z = bbox.min.z; z < bbox.max.z; z++) {
                 for (let y = bbox.min.y; y < bbox.max.y; y++) {
                     for (let x = bbox.min.x; x < bbox.max.x; x++) {
@@ -209,7 +203,7 @@ export const main = async () => {
 
                         cubeInstanceArray.setPointData(
                             gridPositions[cx], gridPositions[cy], gridPositions[cz],
-                            points.colors[pr], points.colors[pg], points.colors[pb], points.colors[pa],
+                            points.colors[px], points.colors[py], points.colors[pz],
                             sideLen
                         );
                     }
@@ -234,19 +228,25 @@ export const main = async () => {
         twgl.drawBufferInfo(gl, rectBuff, gl.LINES, undefined, undefined, cubeInstanceArray.count);
     };
 
-    // wrapping render around
+    // wrapping render around try/catch so it can fail gracefully
     const tryRender = (time: number) => {
         try {
             render(time);
             requestAnimationFrame(tryRender);
         } catch (e) {
             console.error(e);
-            try { gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); } catch (ie) { }
+            try {
+                // attempt to clear the canvas 
+                gl.clearColor(0, 0, 0, 0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            } catch (ie) { }
             return;
         }
     };
     requestAnimationFrame(tryRender);
 };
+
+// ------------------- classes ------------------
 
 // credit: https://gist.github.com/tommyettinger/46a874533244883189143505d203312c?permalink_comment_id=4370639#gistcomment-4370639
 class PRNG {
@@ -291,18 +291,17 @@ class CubeInstanceArray {
         this.instanceSizes = new Float32Array(this.data, offset, instances);
     }
 
-    public setPointData(x: number, y: number, z: number, r: number, g: number, b: number, a: number, size: number) {
+    public setPointData(x: number, y: number, z: number, r: number, g: number, b: number, size: number) {
         // indexing directly to avoid constructing an array in hot loop.
         const [ix, iy, iz] = getVec3Idx(this.count);
         this.instanceCenters[ix] = x;
         this.instanceCenters[iy] = y;
         this.instanceCenters[iz] = z;
 
-        const [ir, ig, ib, ia] = getVec4Idx(this.count);
+        const [ir, ig, ib] = getVec3Idx(this.count);
         this.instanceColors[ir] = r;
         this.instanceColors[ig] = g;
         this.instanceColors[ib] = b;
-        this.instanceColors[ia] = a;
         this.instanceSizes[this.count] = size;
         this.count++;
     }
@@ -312,9 +311,10 @@ class CubeInstanceArray {
 
 class PointsArray {
     private data: ArrayBuffer;
+    public readonly count: number;
 
     public positions: Float32Array; // float vec3
-    public colors: Float32Array; // float vec4 (TODO: SHOULD BE VEC4)
+    public colors: Float32Array; // float vec3
     public scales: Float32Array; // float vec3
     public speeds: Float32Array; // float
     public nextFreeOrSpawned: Int32Array; // int32
@@ -322,24 +322,21 @@ class PointsArray {
     public directions: Int8Array; // char
     public signs: Int8Array; // char (signed)
 
-
-    private static readonly LIST_VALS = Object.freeze({
-        head: 0,
-        tail: 1,
-        end: -1,
-        spawned: -2
-    });
-    private freelist = new Int32Array([PointsArray.LIST_VALS.end, PointsArray.LIST_VALS.end]);
+    // freelist constants, if name collisions become an issue wrap these in a frozen object
+    private static readonly HEAD_IDX = 0;
+    private static readonly TAIL_IDX = 1;
+    private static readonly LIST_END = -1;
+    private static readonly IS_SPAWNED = -2;
+    private freelist = new Int32Array([PointsArray.LIST_END, PointsArray.LIST_END]);
 
     constructor(poolSize: number) {
+        this.count = poolSize;
         const floatBytes = Float32Array.BYTES_PER_ELEMENT * poolSize;
         const vec3Bytes = 3 * floatBytes;
-        const vec4Bytes = 4 * floatBytes;
         const int32Bytes = Int32Array.BYTES_PER_ELEMENT * poolSize;
         const int8Bytes = Int8Array.BYTES_PER_ELEMENT * poolSize;
         this.data = new ArrayBuffer(
-            vec4Bytes + // colors
-            vec3Bytes * 2 + // positions, scales
+            vec3Bytes * 3 + // positions, colors, scales
             floatBytes + // speeds
             int32Bytes * 2 + // nextFreeOrSpawned, activeIdx
             int8Bytes * 2 // directions, signs
@@ -348,8 +345,8 @@ class PointsArray {
         let offset = 0;
         this.positions = new Float32Array(this.data, offset, 3 * poolSize);
         offset += vec3Bytes;
-        this.colors = new Float32Array(this.data, offset, 4 * poolSize);
-        offset += vec4Bytes;
+        this.colors = new Float32Array(this.data, offset, 3 * poolSize);
+        offset += vec3Bytes;
         this.scales = new Float32Array(this.data, offset, 3 * poolSize);
         offset += vec3Bytes;
         this.speeds = new Float32Array(this.data, offset, poolSize);
@@ -365,25 +362,24 @@ class PointsArray {
         // initialize freelist
         for (let i = 0; i < poolSize - 1; i++)
             this.nextFreeOrSpawned[i] = i + 1;
-        this.nextFreeOrSpawned[poolSize - 1] = PointsArray.LIST_VALS.end;
-        this.freelist[PointsArray.LIST_VALS.head] = 0;
+        this.nextFreeOrSpawned[poolSize - 1] = PointsArray.LIST_END;
+        this.freelist[PointsArray.HEAD_IDX] = 0;
         this.freelist[1] = POINT_COUNT - 1;
     }
 
     public spawn() {
-        if (this.freelist[PointsArray.LIST_VALS.head] == PointsArray.LIST_VALS.end) return PointsArray.LIST_VALS.end;
-        const idx = this.freelist[PointsArray.LIST_VALS.head];
-        this.freelist[PointsArray.LIST_VALS.head] = this.nextFreeOrSpawned[idx];
-        if (this.freelist[PointsArray.LIST_VALS.head] == PointsArray.LIST_VALS.end)
-            this.freelist[1] = PointsArray.LIST_VALS.end;
-        this.nextFreeOrSpawned[idx] = PointsArray.LIST_VALS.spawned;
+        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END) return PointsArray.LIST_END;
+        const idx = this.freelist[PointsArray.HEAD_IDX];
+        this.freelist[PointsArray.HEAD_IDX] = this.nextFreeOrSpawned[idx];
+        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END)
+            this.freelist[1] = PointsArray.LIST_END;
+        this.nextFreeOrSpawned[idx] = PointsArray.IS_SPAWNED;
         const lerpA = PRNG.nextRange(0, 1);
         const lerpB = 1 - lerpA;
-        const [pr, pg, pb, pa] = getVec4Idx(idx);
+        const [pr, pg, pb] = getVec3Idx(idx);
         this.colors[pr] = (0xC7 / 255) * lerpA + (0x61 / 255) * lerpB;
         this.colors[pg] = (0x51 / 255) * lerpA + (0x0C / 255) * lerpB;
         this.colors[pb] = (0x08 / 255) * lerpA + (0xCF / 255) * lerpB;
-        this.colors[pa] = 1;
 
         const [bx, by, bz] = getVec3Idx(idx);
         this.directions[idx] = 1 << (Math.trunc(Math.random() * Direction.LEN)) as DirVals;
@@ -410,12 +406,12 @@ class PointsArray {
         this.positions[vx] = Number.MAX_VALUE;
         this.positions[vy] = Number.MAX_VALUE;
         this.positions[vz] = Number.MAX_VALUE;
-        this.nextFreeOrSpawned[idx] = PointsArray.LIST_VALS.end;
-        if (this.freelist[1] != PointsArray.LIST_VALS.end)
-            this.nextFreeOrSpawned[this.freelist[1]] = idx;
+        this.nextFreeOrSpawned[idx] = PointsArray.LIST_END;
+        if (this.freelist[PointsArray.TAIL_IDX] != PointsArray.LIST_END)
+            this.nextFreeOrSpawned[this.freelist[PointsArray.TAIL_IDX]] = idx;
         else
-            this.freelist[PointsArray.LIST_VALS.head] = idx;
-        this.freelist[1] = idx;
+            this.freelist[PointsArray.HEAD_IDX] = idx;
+        this.freelist[PointsArray.TAIL_IDX] = idx;
     }
 
     public getBoundingBox(idx: number) {
@@ -450,12 +446,12 @@ class PointsArray {
             case Direction.NZ:
                 return this.positions[vz] < (Z_MIN - this.scales[vz]);
             default:
-                return true;
+                throw new Error(`invalid direction in point idx ${idx}: ${this.directions[idx]}`)
         }
     }
 
     public isNotSpawned(idx: number) {
-        return this.nextFreeOrSpawned[idx] != PointsArray.LIST_VALS.spawned;
+        return this.nextFreeOrSpawned[idx] != PointsArray.IS_SPAWNED;
     }
 
     private getStartPos(idx: number) {
@@ -467,11 +463,13 @@ class PointsArray {
             case Direction.NY: return Y_MAX + offset;
             case Direction.PZ: return Z_MIN - offset;
             case Direction.NZ: return Z_MAX + offset;
-            default: throw new Error("invalid direction, can't determine start position");
+            default: throw new Error(`invalid direction in point idx ${idx}: ${this.directions[idx]}`);
         }
     }
 
     private static worldToIndex(coord: number, basePos: number, maxIdx: number) {
+        // NOTE: had a -1 offset until ceil was applied, no idea why math worked out like that
+        // this is the only math that is still confusing me. maybe revisit in the future, but it works
         const ret = Math.ceil((coord - basePos) / Cube.INTERVAL);
         return ret > maxIdx ? maxIdx : ret < 0 ? 0 : ret;
     }

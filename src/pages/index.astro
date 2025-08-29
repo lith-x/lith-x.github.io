@@ -17,9 +17,7 @@ import { Image } from "astro:assets";
   >
     <canvas
       id="bg-canvas"
-      class="fixed top-0 left-0 w-screen h-screen block -z-10"
-      >Browser doesn't support canvas :/</canvas
-    >
+      class="fixed top-0 left-0 w-screen h-screen block -z-10"></canvas>
     <div class="flex">
       <a class="self-center" href="https://github.com/lith-x">
         <Image
@@ -89,8 +87,9 @@ import { Image } from "astro:assets";
         and/or debugging across multiple platforms.
       </li>
     </ul>
+    <div class="fixed bottom-1 left-1 text-[1em] text-violet-300 italic">made by me! <a href="https://github.com/lith-x/lith-x.github.io/">source</a></div>
     <script>
-      import {main} from "../bg-anim/bg-main";
+      import { main } from "../ts/bg-webgl";
       main();
     </script>
   </body>
