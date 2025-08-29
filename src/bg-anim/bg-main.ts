@@ -11,12 +11,6 @@ const Direction = {
 } as const;
 type DirVals = typeof Direction[keyof typeof Direction];
 
-const ListState = {
-    LIST_END: -1,
-    IS_SPAWNED: -2
-} as const;
-type ListStateVals = typeof ListState[keyof typeof ListState];
-
 const Cube = {
     SIZE: 0.05,
     PADDING: 0.0005,
@@ -37,13 +31,9 @@ const Spawn = {
     },
     SPEED: {
         MIN: Cube.INTERVAL * 3,
-        MAX: Cube.INTERVAL * 6
+        MAX: Cube.INTERVAL * 8
     },
 };
-
-let GRID = {};
-
-type Freelist = [head: number, tail: number];
 
 const CENTER = twgl.v3.create(0, 0, 0);
 const EPSILON = 1e-6; // from raymath
@@ -53,11 +43,10 @@ const CUBES_Y = 24;
 const CUBES_Z = 24;
 const CUBES_COUNT = (CUBES_X * CUBES_Y * CUBES_Z);
 
-// note: SIZE_X is the scaling factor for bullet speed, radius, etc.
-const GETLENGTH = (x: number) => (Cube.INTERVAL * (x) - Cube.PADDING);
-const SIZE_X = GETLENGTH(CUBES_X);
-const SIZE_Y = GETLENGTH(CUBES_Y);
-const SIZE_Z = GETLENGTH(CUBES_Z);
+const getGridLength = (x: number) => (Cube.INTERVAL * (x) - Cube.PADDING);
+const SIZE_X = getGridLength(CUBES_X);
+const SIZE_Y = getGridLength(CUBES_Y);
+const SIZE_Z = getGridLength(CUBES_Z);
 
 const X_MIN = (CENTER[0] - SIZE_X / 2);
 const X_MAX = (CENTER[0] + SIZE_X / 2);
@@ -67,135 +56,31 @@ const Z_MIN = (CENTER[2] - SIZE_Z / 2);
 const Z_MAX = (CENTER[2] + SIZE_Z / 2);
 
 const X_MIN_CUBE_CENTER = (X_MIN + Cube.SIZE / 2);
-const X_MAX_CUBE_CENTER = (X_MAX - Cube.SIZE / 2);
 const Y_MIN_CUBE_CENTER = (Y_MIN + Cube.SIZE / 2);
-const Y_MAX_CUBE_CENTER = (Y_MAX - Cube.SIZE / 2);
 const Z_MIN_CUBE_CENTER = (Z_MIN + Cube.SIZE / 2);
-const Z_MAX_CUBE_CENTER = (Z_MAX - Cube.SIZE / 2);
-
-const CUBE_IDX = (x: number, y: number, z: number) => CUBES_X * CUBES_Y * z + CUBES_X * y + x;
-
-const getVec4Idx = (idx: number) => {
-    const base = idx * 4;
-    return [base, base + 1, base + 2, base + 3];
-}
-const getVec3Idx = (idx: number) => {
-    const base = idx * 3;
-    return [base, base + 1, base + 2];
-};
 
 const POINT_COUNT = 10;
-const LIST_END = -1;
-const IS_SPAWNED = -2;
 
-const initFreelist = (freelist: Freelist, points: PointBufferArray) => {
-    for (let i = 0; i < POINT_COUNT - 1; i++)
-        points.nextFreeOrSpawned[i] = i + 1;
-    points.nextFreeOrSpawned[POINT_COUNT - 1] = LIST_END;
-    freelist[0] = 0;
-    freelist[1] = POINT_COUNT - 1;
-};
+const cubeIdx = (x: number, y: number, z: number) => CUBES_X * CUBES_Y * z + CUBES_X * y + x;
 
-const dirToStartPos = (idx: number, points: PointBufferArray) => {
-    const offset = points.scales[points.activeIdx[idx]];
-    switch (points.directions[idx]) {
-        case Direction.PX: return X_MIN - offset;
-        case Direction.NX: return X_MAX + offset;
-        case Direction.PY: return Y_MIN - offset;
-        case Direction.NY: return Y_MAX + offset;
-        case Direction.PZ: return Z_MIN - offset;
-        case Direction.NZ: return Z_MAX + offset;
-        default: throw new Error("invalid direction, can't determine start position");
-    }
-};
-
-const spawnPoint = (freelist: Freelist, points: PointBufferArray) => {
-    if (freelist[0] == LIST_END) return LIST_END;
-    const idx = freelist[0];
-    freelist[0] = points.nextFreeOrSpawned[idx];
-    if (freelist[0] == LIST_END)
-        freelist[1] = LIST_END;
-    points.nextFreeOrSpawned[idx] = IS_SPAWNED;
-    const lerpA = PRNG.nextRange(0, 1);
-    const lerpB = 1 - lerpA;
-    const [pr, pg, pb, pa] = getVec4Idx(idx);
-    points.colors[pr] = (0xC7 / 255) * lerpA + (0x61 / 255) * lerpB;
-    points.colors[pg] = (0x51 / 255) * lerpA + (0x0C / 255) * lerpB;
-    points.colors[pb] = (0x08 / 255) * lerpA + (0xCF / 255) * lerpB;
-    points.colors[pa] = 1;
-
-    const [bx, by, bz] = getVec3Idx(idx);
-    points.directions[idx] = 1 << (Math.trunc(Math.random() * Direction.LEN)) as DirVals;
-    points.signs[idx] = points.directions[idx] & (Direction.PX | Direction.PY | Direction.PZ) ? 1 : -1;
-    points.activeIdx[idx] = points.directions[idx] & (Direction.PX | Direction.NX) ? bx
-        : points.directions[idx] & (Direction.PY | Direction.NY) ? by : bz;
-
-    points.speeds[idx] = PRNG.nextRange(Spawn.SPEED.MIN, Spawn.SPEED.MAX);
-
-    const pointRadius = PRNG.nextRange(Spawn.RADIUS.MIN, Spawn.RADIUS.MAX);
-    points.scales[bx] = pointRadius;
-    points.scales[by] = pointRadius;
-    points.scales[bz] = pointRadius;
-    points.scales[points.activeIdx[idx]] = PRNG.nextRange(Spawn.LENGTH.MIN, Spawn.LENGTH.MAX);
-    points.positions[bx] = X_MIN_CUBE_CENTER + Math.trunc(CUBES_X * Math.random()) * Cube.INTERVAL;
-    points.positions[by] = Y_MIN_CUBE_CENTER + Math.trunc(CUBES_Y * Math.random()) * Cube.INTERVAL;
-    points.positions[bz] = Z_MIN_CUBE_CENTER + Math.trunc(CUBES_Z * Math.random()) * Cube.INTERVAL;
-    points.positions[points.activeIdx[idx]] = dirToStartPos(idx, points);
-    return idx;
-};
-
-const freePoint = (freelist: Freelist, points: PointBufferArray, idx: number) => {
-    const [vx, vy, vz] = getVec3Idx(idx);
-    points.positions[vx] = Number.MAX_VALUE;
-    points.positions[vy] = Number.MAX_VALUE;
-    points.positions[vz] = Number.MAX_VALUE;
-    points.nextFreeOrSpawned[idx] = LIST_END;
-    if (freelist[1] != LIST_END)
-        points.nextFreeOrSpawned[freelist[1]] = idx;
-    else
-        freelist[0] = idx;
-    freelist[1] = idx;
-};
-
-const isOutOfBounds = (points: PointBufferArray, idx: number) => {
-    const [vx, vy, vz] = getVec3Idx(idx);
-    switch (points.directions[idx]) {
-        case Direction.PX:
-            return points.positions[vx] > (X_MAX + points.scales[vx]);
-        case Direction.NX:
-            return points.positions[vx] < (X_MIN - points.scales[vx]);
-        case Direction.PY:
-            return points.positions[vy] > (Y_MAX + points.scales[vy]);
-        case Direction.NY:
-            return points.positions[vy] < (Y_MIN - points.scales[vy]);
-        case Direction.PZ:
-            return points.positions[vz] > (Z_MAX + points.scales[vz]);
-        case Direction.NZ:
-            return points.positions[vz] < (Z_MIN - points.scales[vz]);
-        default:
-            return true;
-    }
-};
-
-const worldToIndex = (coord: number, basePos: number, maxIdx: number) => {
-    // NOTE: idk why ceilf had to be used here but it fixed an off by -1 offset
-    // issue.
-    const ret = Math.ceil((coord - basePos) / Cube.INTERVAL);
-    return ret > maxIdx ? maxIdx : ret < 0 ? 0 : ret;
-    // todo: revisit this to see what's up, why it broke, so it just naturally gives the correct val at correct range without clamping
+const v4scratch: [r: number, g: number, b: number, a: number] = [0, 0, 0, 0];
+const getVec4Idx = (idx: number) => {
+    const base = idx * 4;
+    v4scratch[0] = base;
+    v4scratch[1] = base + 1;
+    v4scratch[2] = base + 2;
+    v4scratch[3] = base + 3;
+    return v4scratch;
 }
 
-const getPointBoundingBox = (points: PointBufferArray, idx: number) => {
-    const [vx, vy, vz] = getVec3Idx(idx);
-    return {
-        min_x: worldToIndex(points.positions[vx] - points.scales[vx], X_MIN_CUBE_CENTER, CUBES_X),
-        max_x: worldToIndex(points.positions[vx] + points.scales[vx], X_MIN_CUBE_CENTER, CUBES_X),
-        min_y: worldToIndex(points.positions[vy] - points.scales[vy], Y_MIN_CUBE_CENTER, CUBES_Y),
-        max_y: worldToIndex(points.positions[vy] + points.scales[vy], Y_MIN_CUBE_CENTER, CUBES_Y),
-        min_z: worldToIndex(points.positions[vz] - points.scales[vz], Z_MIN_CUBE_CENTER, CUBES_Z),
-        max_z: worldToIndex(points.positions[vz] + points.scales[vz], Z_MIN_CUBE_CENTER, CUBES_Z),
-    };
-}
+const v3scratch: [x: number, y: number, z: number] = [0, 0, 0];
+const getVec3Idx = (idx: number) => {
+    const base = idx * 3;
+    v3scratch[0] = base;
+    v3scratch[1] = base + 1;
+    v3scratch[2] = base + 2;
+    return v3scratch;
+};
 
 // ----------------------------------------
 
@@ -211,45 +96,47 @@ export const main = async () => {
     const cubeInstanceArray = new CubeInstanceArray(CUBES_COUNT, 3);
 
     const rectArrays: twgl.Arrays = {
-        position: {
-            numComponents: 3,
-            data: [-0.5, -0.5, 0.5, //0
-                0.5, -0.5, 0.5, //1
-            -0.5, 0.5, 0.5, //2
-                0.5, 0.5, 0.5, //3
-            -0.5, -0.5, -0.5, //4
-                0.5, -0.5, -0.5, //5
-            -0.5, 0.5, -0.5, //6
-                0.5, 0.5, -0.5] //7
-        },
         indices: {
             numComponents: 2,
             data: [
                 0, 1, 1, 3, 3, 2, 2, 0,
                 4, 5, 5, 7, 7, 6, 6, 4,
                 0, 4, 1, 5, 2, 6, 3, 7
-            ]
+            ],
+            drawType: gl.STATIC_DRAW
+        },
+        position: {
+            numComponents: 3,
+            data: [-0.5, -0.5, 0.5,
+                0.5, -0.5, 0.5,
+            -0.5, 0.5, 0.5,
+                0.5, 0.5, 0.5,
+            -0.5, -0.5, -0.5,
+                0.5, -0.5, -0.5,
+            -0.5, 0.5, -0.5,
+                0.5, 0.5, -0.5],
+            drawType: gl.STATIC_DRAW
         },
         instanceCenter: {
             divisor: 1,
             numComponents: 3,
-            data: cubeInstanceArray.instanceCenters
+            data: cubeInstanceArray.instanceCenters,
+            drawType: gl.STREAM_DRAW
         },
         instanceColor: {
             divisor: 1,
             numComponents: 4,
-            data: cubeInstanceArray.instanceColors
+            data: cubeInstanceArray.instanceColors,
+            drawType: gl.STREAM_DRAW
         },
         instanceSize: {
             divisor: 1,
             numComponents: 1,
-            data: cubeInstanceArray.instanceSizes
-        },
-
+            data: cubeInstanceArray.instanceSizes,
+            drawType: gl.STREAM_DRAW
+        }
     };
 
-    // TODO/optimize: this runs at startup every time, once the scene gets finalized just precompute
-    // all of this and throw it in a huge array.
     const gridPositions = new Float32Array(CUBES_COUNT * 3);
     const refPos = twgl.v3.create(X_MIN_CUBE_CENTER, Y_MIN_CUBE_CENTER, Z_MIN_CUBE_CENTER);
     for (let z = 0; z < CUBES_Z; z++) {
@@ -257,10 +144,10 @@ export const main = async () => {
         for (let y = 0; y < CUBES_Y; y++) {
             refPos[0] = X_MIN_CUBE_CENTER;
             for (let x = 0; x < CUBES_X; x++) {
-                const [cx, cy, cz] = getVec3Idx(CUBE_IDX(x, y, z));
-                gridPositions[cx] = refPos[0]; // x
-                gridPositions[cy] = refPos[1]; // y
-                gridPositions[cz] = refPos[2]; // z
+                const [cx, cy, cz] = getVec3Idx(cubeIdx(x, y, z));
+                gridPositions[cx] = refPos[0];
+                gridPositions[cy] = refPos[1];
+                gridPositions[cz] = refPos[2];
                 refPos[0] += Cube.INTERVAL;
             }
             refPos[1] += Cube.INTERVAL;
@@ -268,21 +155,20 @@ export const main = async () => {
         refPos[2] += Cube.INTERVAL;
     }
 
-    const points = new PointBufferArray(POINT_COUNT);
-    const freelist: Freelist = [LIST_END, LIST_END];
-    initFreelist(freelist, points);
-
     const rectBuff = twgl.createBufferInfoFromArrays(gl, rectArrays);
     const vao = twgl.createVAOFromBufferInfo(gl, progInfo, rectBuff);
     const maxGridSize = SIZE_X > SIZE_Y ? SIZE_X : SIZE_Y;
     const fieldOfView = 3;
-    const viewMat = twgl.m4.inverse(twgl.m4.lookAt([0, 0, maxGridSize * fieldOfView], [0, 0, 0], [0, 1, 0]));
     gl.useProgram(progInfo.program);
     gl.bindVertexArray(vao);
-    twgl.setUniforms(progInfo, { u_view: viewMat });
+    twgl.setUniforms(progInfo, {
+        u_view: twgl.m4.inverse(twgl.m4.lookAt([0, 0, maxGridSize * fieldOfView], [0, 0, 0], [0, 1, 0]))
+    });
 
     let dt: number;
     let lastTime = 0;
+    let resized = false;
+    const points = new PointsArray(POINT_COUNT);
     let spawnTimer = PRNG.nextRange(Spawn.TIME.MIN, Spawn.TIME.MAX);
     const render = (time: number) => {
         dt = (time - lastTime) / 1000;
@@ -290,40 +176,40 @@ export const main = async () => {
         cubeInstanceArray.reset();
 
         if ((spawnTimer -= dt) <= 0) {
-            spawnPoint(freelist, points);
+            points.spawn();
             spawnTimer = PRNG.nextRange(Spawn.TIME.MIN, Spawn.TIME.MAX);
         }
 
         for (let i = 0; i < POINT_COUNT; i++) {
-            if (points.nextFreeOrSpawned[i] != IS_SPAWNED)
+            if (points.isNotSpawned(i))
                 continue;
 
             points.positions[points.activeIdx[i]] += dt * points.signs[i] * points.speeds[i];
-            if (isOutOfBounds(points, i)) {
-                freePoint(freelist, points, i);
+            if (points.isOutOfBounds(i)) {
+                points.free(i);
                 continue;
             }
 
-            const bbox = getPointBoundingBox(points, i);
+            const bbox = points.getBoundingBox(i);
             const [px, py, pz] = getVec3Idx(i);
             const [pr, pg, pb, pa] = getVec4Idx(i);
-            for (let z = bbox.min_z; z < bbox.max_z; z++) {
-                for (let y = bbox.min_y; y < bbox.max_y; y++) {
-                    for (let x = bbox.min_x; x < bbox.max_x; x++) {
-                        const [cx, cy, cz] = getVec3Idx(CUBE_IDX(x, y, z));
+            for (let z = bbox.min.z; z < bbox.max.z; z++) {
+                for (let y = bbox.min.y; y < bbox.max.y; y++) {
+                    for (let x = bbox.min.x; x < bbox.max.x; x++) {
+                        const [cx, cy, cz] = getVec3Idx(cubeIdx(x, y, z));
                         const dx = Math.abs((points.positions[px] - gridPositions[cx]) / points.scales[px]);
                         const dy = Math.abs((points.positions[py] - gridPositions[cy]) / points.scales[py]);
                         const dz = Math.abs((points.positions[pz] - gridPositions[cz]) / points.scales[pz]);
                         const d = dx + dy + dz;
+
+                        // octahedral shape with a linear falloff
                         const sideLen = Math.max(0, Cube.SIZE * (1 - d));
                         if (sideLen <= EPSILON)
                             continue;
-                        // debug: bypass side length calc, show all cubes
-                        // const side_len = CUBE_SIZE;
 
                         cubeInstanceArray.setPointData(
-                            [gridPositions[cx], gridPositions[cy], gridPositions[cz]],
-                            [points.colors[pr], points.colors[pg], points.colors[pb], points.colors[pa]],
+                            gridPositions[cx], gridPositions[cy], gridPositions[cz],
+                            points.colors[pr], points.colors[pg], points.colors[pb], points.colors[pa],
                             sideLen
                         );
                     }
@@ -331,8 +217,8 @@ export const main = async () => {
             }
         }
 
-
-        if (twgl.resizeCanvasToDisplaySize(gl.canvas as HTMLCanvasElement)) {
+        resized = twgl.resizeCanvasToDisplaySize(gl.canvas as HTMLCanvasElement);
+        if (resized) {
             twgl.setUniforms(progInfo, {
                 u_proj: twgl.m4.perspective(1 / fieldOfView,
                     gl.drawingBufferWidth / gl.drawingBufferHeight,
@@ -348,12 +234,14 @@ export const main = async () => {
         twgl.drawBufferInfo(gl, rectBuff, gl.LINES, undefined, undefined, cubeInstanceArray.count);
     };
 
+    // wrapping render around
     const tryRender = (time: number) => {
         try {
-            requestAnimationFrame(tryRender);
             render(time);
+            requestAnimationFrame(tryRender);
         } catch (e) {
             console.error(e);
+            try { gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); } catch (ie) { }
             return;
         }
     };
@@ -362,7 +250,7 @@ export const main = async () => {
 
 // credit: https://gist.github.com/tommyettinger/46a874533244883189143505d203312c?permalink_comment_id=4370639#gistcomment-4370639
 class PRNG {
-    private static base = 0;
+    private static base = Date.now(); // initial seed for PRNG
     private static readonly maxVal = 0xffff_ffff;
 
     // Weyl-sequence-based generator (Mulberry32 cousin)
@@ -386,22 +274,35 @@ class CubeInstanceArray {
     public instanceCenters: Float32Array; // float vec3
     public instanceColors: Float32Array; // float vec4
     public instanceSizes: Float32Array; // float
+
     constructor(instanceNum: number, maxCubesPerPosition: number) {
         const instances = instanceNum * maxCubesPerPosition;
-        const vec4Elts = 4 * instances;
         const vec3Elts = 3 * instances;
+        const vec4Elts = 4 * instances;
         this.data = new ArrayBuffer((vec3Elts + vec4Elts + instances) * Float32Array.BYTES_PER_ELEMENT);
+
         let offset = 0;
         this.instanceCenters = new Float32Array(this.data, offset, vec3Elts);
         offset += vec3Elts * Float32Array.BYTES_PER_ELEMENT;
+
         this.instanceColors = new Float32Array(this.data, offset, vec4Elts);
         offset += vec4Elts * Float32Array.BYTES_PER_ELEMENT;
+
         this.instanceSizes = new Float32Array(this.data, offset, instances);
     }
 
-    public setPointData(position: [number, number, number], color: [number, number, number, number], size: number) {
-        this.instanceCenters.set(position, this.count * 3);
-        this.instanceColors.set(color, this.count * 4);
+    public setPointData(x: number, y: number, z: number, r: number, g: number, b: number, a: number, size: number) {
+        // indexing directly to avoid constructing an array in hot loop.
+        const [ix, iy, iz] = getVec3Idx(this.count);
+        this.instanceCenters[ix] = x;
+        this.instanceCenters[iy] = y;
+        this.instanceCenters[iz] = z;
+
+        const [ir, ig, ib, ia] = getVec4Idx(this.count);
+        this.instanceColors[ir] = r;
+        this.instanceColors[ig] = g;
+        this.instanceColors[ib] = b;
+        this.instanceColors[ia] = a;
         this.instanceSizes[this.count] = size;
         this.count++;
     }
@@ -409,7 +310,7 @@ class CubeInstanceArray {
     public reset() { this.count = 0; }
 }
 
-class PointBufferArray {
+class PointsArray {
     private data: ArrayBuffer;
 
     public positions: Float32Array; // float vec3
@@ -420,6 +321,15 @@ class PointBufferArray {
     public activeIdx: Int32Array; // int32
     public directions: Int8Array; // char
     public signs: Int8Array; // char (signed)
+
+
+    private static readonly LIST_VALS = Object.freeze({
+        head: 0,
+        tail: 1,
+        end: -1,
+        spawned: -2
+    });
+    private freelist = new Int32Array([PointsArray.LIST_VALS.end, PointsArray.LIST_VALS.end]);
 
     constructor(poolSize: number) {
         const floatBytes = Float32Array.BYTES_PER_ELEMENT * poolSize;
@@ -451,5 +361,118 @@ class PointBufferArray {
         this.directions = new Int8Array(this.data, offset, poolSize);
         offset += int8Bytes;
         this.signs = new Int8Array(this.data, offset, poolSize);
+
+        // initialize freelist
+        for (let i = 0; i < poolSize - 1; i++)
+            this.nextFreeOrSpawned[i] = i + 1;
+        this.nextFreeOrSpawned[poolSize - 1] = PointsArray.LIST_VALS.end;
+        this.freelist[PointsArray.LIST_VALS.head] = 0;
+        this.freelist[1] = POINT_COUNT - 1;
+    }
+
+    public spawn() {
+        if (this.freelist[PointsArray.LIST_VALS.head] == PointsArray.LIST_VALS.end) return PointsArray.LIST_VALS.end;
+        const idx = this.freelist[PointsArray.LIST_VALS.head];
+        this.freelist[PointsArray.LIST_VALS.head] = this.nextFreeOrSpawned[idx];
+        if (this.freelist[PointsArray.LIST_VALS.head] == PointsArray.LIST_VALS.end)
+            this.freelist[1] = PointsArray.LIST_VALS.end;
+        this.nextFreeOrSpawned[idx] = PointsArray.LIST_VALS.spawned;
+        const lerpA = PRNG.nextRange(0, 1);
+        const lerpB = 1 - lerpA;
+        const [pr, pg, pb, pa] = getVec4Idx(idx);
+        this.colors[pr] = (0xC7 / 255) * lerpA + (0x61 / 255) * lerpB;
+        this.colors[pg] = (0x51 / 255) * lerpA + (0x0C / 255) * lerpB;
+        this.colors[pb] = (0x08 / 255) * lerpA + (0xCF / 255) * lerpB;
+        this.colors[pa] = 1;
+
+        const [bx, by, bz] = getVec3Idx(idx);
+        this.directions[idx] = 1 << (Math.trunc(Math.random() * Direction.LEN)) as DirVals;
+        this.signs[idx] = this.directions[idx] & (Direction.PX | Direction.PY | Direction.PZ) ? 1 : -1;
+        this.activeIdx[idx] = this.directions[idx] & (Direction.PX | Direction.NX) ? bx
+            : this.directions[idx] & (Direction.PY | Direction.NY) ? by : bz;
+
+        this.speeds[idx] = PRNG.nextRange(Spawn.SPEED.MIN, Spawn.SPEED.MAX);
+
+        const pointRadius = PRNG.nextRange(Spawn.RADIUS.MIN, Spawn.RADIUS.MAX);
+        this.scales[bx] = pointRadius;
+        this.scales[by] = pointRadius;
+        this.scales[bz] = pointRadius;
+        this.scales[this.activeIdx[idx]] = PRNG.nextRange(Spawn.LENGTH.MIN, Spawn.LENGTH.MAX);
+        this.positions[bx] = X_MIN_CUBE_CENTER + Math.trunc(CUBES_X * Math.random()) * Cube.INTERVAL;
+        this.positions[by] = Y_MIN_CUBE_CENTER + Math.trunc(CUBES_Y * Math.random()) * Cube.INTERVAL;
+        this.positions[bz] = Z_MIN_CUBE_CENTER + Math.trunc(CUBES_Z * Math.random()) * Cube.INTERVAL;
+        this.positions[this.activeIdx[idx]] = this.getStartPos(idx);
+        return idx;
+    }
+
+    public free(idx: number) {
+        const [vx, vy, vz] = getVec3Idx(idx);
+        this.positions[vx] = Number.MAX_VALUE;
+        this.positions[vy] = Number.MAX_VALUE;
+        this.positions[vz] = Number.MAX_VALUE;
+        this.nextFreeOrSpawned[idx] = PointsArray.LIST_VALS.end;
+        if (this.freelist[1] != PointsArray.LIST_VALS.end)
+            this.nextFreeOrSpawned[this.freelist[1]] = idx;
+        else
+            this.freelist[PointsArray.LIST_VALS.head] = idx;
+        this.freelist[1] = idx;
+    }
+
+    public getBoundingBox(idx: number) {
+        const [vx, vy, vz] = getVec3Idx(idx);
+        return {
+            min: {
+                x: PointsArray.worldToIndex(this.positions[vx] - this.scales[vx], X_MIN_CUBE_CENTER, CUBES_X),
+                y: PointsArray.worldToIndex(this.positions[vy] - this.scales[vy], Y_MIN_CUBE_CENTER, CUBES_Y),
+                z: PointsArray.worldToIndex(this.positions[vz] - this.scales[vz], Z_MIN_CUBE_CENTER, CUBES_Z),
+            },
+            max: {
+                x: PointsArray.worldToIndex(this.positions[vx] + this.scales[vx], X_MIN_CUBE_CENTER, CUBES_X),
+                y: PointsArray.worldToIndex(this.positions[vy] + this.scales[vy], Y_MIN_CUBE_CENTER, CUBES_Y),
+                z: PointsArray.worldToIndex(this.positions[vz] + this.scales[vz], Z_MIN_CUBE_CENTER, CUBES_Z),
+            }
+        };
+    }
+
+    public isOutOfBounds(idx: number) {
+        const [vx, vy, vz] = getVec3Idx(idx);
+        switch (this.directions[idx]) {
+            case Direction.PX:
+                return this.positions[vx] > (X_MAX + this.scales[vx]);
+            case Direction.NX:
+                return this.positions[vx] < (X_MIN - this.scales[vx]);
+            case Direction.PY:
+                return this.positions[vy] > (Y_MAX + this.scales[vy]);
+            case Direction.NY:
+                return this.positions[vy] < (Y_MIN - this.scales[vy]);
+            case Direction.PZ:
+                return this.positions[vz] > (Z_MAX + this.scales[vz]);
+            case Direction.NZ:
+                return this.positions[vz] < (Z_MIN - this.scales[vz]);
+            default:
+                return true;
+        }
+    }
+
+    public isNotSpawned(idx: number) {
+        return this.nextFreeOrSpawned[idx] != PointsArray.LIST_VALS.spawned;
+    }
+
+    private getStartPos(idx: number) {
+        const offset = this.scales[this.activeIdx[idx]];
+        switch (this.directions[idx]) {
+            case Direction.PX: return X_MIN - offset;
+            case Direction.NX: return X_MAX + offset;
+            case Direction.PY: return Y_MIN - offset;
+            case Direction.NY: return Y_MAX + offset;
+            case Direction.PZ: return Z_MIN - offset;
+            case Direction.NZ: return Z_MAX + offset;
+            default: throw new Error("invalid direction, can't determine start position");
+        }
+    }
+
+    private static worldToIndex(coord: number, basePos: number, maxIdx: number) {
+        const ret = Math.ceil((coord - basePos) / Cube.INTERVAL);
+        return ret > maxIdx ? maxIdx : ret < 0 ? 0 : ret;
     }
 }
