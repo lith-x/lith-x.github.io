@@ -12,98 +12,109 @@ import { Image } from "astro:assets";
     <meta name="generator" content={Astro.generator} />
     <title>Site for Aaron :)</title>
   </head>
-  <body
-    class="h-full bg-gradient-to-tr from-black from-50% via-purple-900 via-[80%] to-purple-950 to-90% bg-black text-white bg-no-repeat p-[6vw]"
-  >
+  <body class="min-h-screen bg-gray-950 relative text-white">
     <canvas
       id="bg-canvas"
       class="fixed top-0 left-0 w-screen h-screen block -z-10"></canvas>
-    <div class="flex">
-      <a class="self-center" href="https://github.com/lith-x">
-        <Image
-          src={githubLogo}
-          alt="GitHub Profile"
-          class="gh-logo glow-anim scale-[0.55]"
-        />
-      </a>
-      <h1 class="text-7xl glow-anim self-center">Aaron Zandt</h1>
-    </div>
-    <br />
-    <h2 class="text-4xl pb-4">About me</h2>
-    <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
-      <li class="pb-3.5">
-        I'm a software engineer with a B.S. in Computer Science (minor in
-        Mathematics) from the University of Nebraska at Omaha. My experience
-        spans both high-level web development and low-level systems programming,
-        giving me a strong foundation in building performant, thoughtfully
-        designed software.
-      </li>
+    <div
+      class="p-[6vw] absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(139,92,246,0.25),_transparent_70%)]"
+    >
+      <div class="flex">
+        <a class="self-center" href="https://github.com/lith-x">
+          <Image
+            src={githubLogo}
+            alt="GitHub Profile"
+            class="gh-logo glow-anim scale-[0.55]"
+          />
+        </a>
+        <h1 class="text-7xl glow-anim self-center">Aaron Zandt</h1>
+      </div>
+      <br />
+      <h2 class="text-4xl pb-4">About me</h2>
+      <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
+        <li class="pb-3.5">
+          I'm a software engineer with a B.S. in Computer Science (minor in
+          Mathematics) from the University of Nebraska at Omaha. My experience
+          spans both high-level web development and low-level systems
+          programming, giving me a strong foundation in building performant,
+          thoughtfully designed software.
+        </li>
 
-      <li class="pb-3.5">
-        I've worked with a wide range of technologies, such as Java, C#,
-        Typescript, C, Assembly, Python, and various web development
-        stacks/tools. I'm particularly interested in performance-oriented code,
-        systems programming, and software architecture.
-      </li>
+        <li class="pb-3.5">
+          I've worked with a wide range of technologies, such as Java, C#,
+          Typescript, C, Assembly, Python, and various web development
+          stacks/tools. I'm particularly interested in performance-oriented
+          code, systems programming, and software architecture.
+        </li>
 
-      <li class="pb-3.5">
-        I draw inspiration from projects like <a
-          href="https://www.youtube.com/playlist?list=PLnuhp3Xd9PYTt6svyQPyRO_AAuMWGxPzU"
-          >Handmade Hero</a
-        > and communities like <a href="https://www.youtube.com/@TsodingDaily"
-          >Tsoding Daily</a
-        >, which have shaped my philosophy of writing code that is intentional,
-        efficient, and built from the ground up with clarity in mind.
-      </li>
-    </ul>
-    <h2 class="text-4xl pb-4">Projects</h2>
-    <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
-      <li class="pb-3.5">
-        <a
-          class="font-bold italic [font-variant:small-caps]"
-          href="https://github.com/lith-x/Capstone-project"
-          >Capstone Project — Northrop Grumman</a
+        <li class="pb-3.5">
+          I draw inspiration from projects like <a
+            href="https://www.youtube.com/playlist?list=PLnuhp3Xd9PYTt6svyQPyRO_AAuMWGxPzU"
+            >Handmade Hero</a
+          > and communities like <a href="https://www.youtube.com/@TsodingDaily"
+            >Tsoding Daily</a
+          >, which have shaped my philosophy of writing code that is
+          intentional, efficient, and built from the ground up with clarity in
+          mind.
+        </li>
+      </ul>
+      <h2 class="text-4xl pb-4">Projects</h2>
+      <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
+        <li class="pb-3.5">
+          <a
+            class="font-bold italic [font-variant:small-caps]"
+            href="https://github.com/lith-x/Capstone-project"
+            >Capstone Project — Northrop Grumman</a
+          >
+          — Collaborated with a team to develop a plugin for the Android application
+          <a href="https://tak.gov/">ATAK</a>, enabling geolocation of devices
+          outside the network via Bluetooth signaling.
+
+          <ul class="ml-4 list-[square]">
+            <li>Tech: Java, Android SDK, Bluetooth APIs</li>
+            <li>
+              Impact: Delivered a working prototype that extended ATAK's
+              functionality for field use.
+            </li>
+          </ul>
+        </li>
+        <li class="pb-3.5">
+          <a
+            class="font-bold italic [font-variant:small-caps]"
+            href="https://github.com/lith-x/leetcode">LeetCode Repository</a
+          >
+          — A personal repository of solutions to algorithmic problems, developed
+          and debugged across multiple platforms.
+          <ul class="ml-4 list-[square]">
+            <li>Tech: C, TypeScript, Lua</li>
+            <li>
+              Focus: Clean, efficient solutions with an emphasis on performance
+              and readability.
+            </li>
+          </ul>
+        </li>
+        <li class="pb-3.5">
+          <span class="font-bold italic [font-variant:small-caps]"
+            >This Site</span
+          > — Source available, see link at the bottom left.
+          <ul class="ml-4 list-[square]">
+            <li>Tech: Astro, Tailwind, Typescript, WebGL</li>
+            <li>
+              Focus: Minimal, clean design to show off personal accomplishments
+              with extensibility in mind.
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <div class="fixed bottom-1 left-1 text-[1em] text-violet-300 italic">
+        made by me! <a href="https://github.com/lith-x/lith-x.github.io/"
+          >source</a
         >
-        — Collaborated with a team to develop a plugin for the Android application
-        <a href="https://tak.gov/">ATAK</a>, enabling geolocation of devices
-        outside the network via Bluetooth signaling.
-
-        <ul class="ml-4 list-[square]">
-          <li>Tech: Java, Android SDK, Bluetooth APIs</li>
-          <li>
-            Impact: Delivered a working prototype that extended ATAK's
-            functionality for field use.
-          </li>
-        </ul>
-      </li>
-      <li class="pb-3.5">
-        <a
-          class="font-bold italic [font-variant:small-caps]"
-          href="https://github.com/lith-x/leetcode">LeetCode Repository</a
-        >
-        — A personal repository of solutions to algorithmic problems, developed and
-        debugged across multiple platforms.
-        <ul class="ml-4 list-[square]">
-          <li>Tech: C, TypeScript, Lua</li>
-          <li>
-            Focus: Clean, efficient solutions with an emphasis on performance
-            and readability.
-          </li>
-        </ul>
-      </li>
-      <li class="pb-3.5">
-        <span class="font-bold italic [font-variant:small-caps]">This Site</span
-        > — Check the bottom of the page!
-      </li>
-    </ul>
-    <div class="fixed bottom-1 left-1 text-[1em] text-violet-300 italic">
-      made by me! <a href="https://github.com/lith-x/lith-x.github.io/"
-        >source</a
-      >
+      </div>
+      <script>
+        import { main } from "../ts/bg-webgl";
+        main();
+      </script>
     </div>
-    <script>
-      import { main } from "../ts/bg-webgl";
-      main();
-    </script>
   </body>
 </html>
