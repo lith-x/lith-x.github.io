@@ -21,18 +21,27 @@ import { Image } from "astro:assets";
       class="pl-[6vw] pt-[8vh] inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(139,92,246,0.25),_transparent_70%)]"
     >
       <div class="flex md:flex-row flex-col items-start">
-        <h1 class="text-7xl glow-anim font-[SUSE] font-thin">
-          Aaron Zandt
-        </h1>
-        <div class="flex justify-center mt-0 flex-row gap-2 md:flex-col md:ml-4">
-          <a class="" href="https://github.com/lith-x">
+        <h1 class="text-7xl glow-anim font-[SUSE] font-thin">Aaron Zandt</h1>
+        <div
+          class="flex justify-center mt-0 flex-row gap-2 md:flex-col md:ml-4"
+        >
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            class=""
+            href="https://github.com/lith-x"
+          >
             <Image
               src={githubLogo}
               alt="GitHub Profile"
               class="glow-anim w-7 h-7"
             />
           </a>
-          <a href="https://github.com/lith-x">
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://github.com/lith-x"
+          >
             <Image
               src={linkedinLogo}
               alt="LinkedIn Profile"
@@ -62,9 +71,13 @@ import { Image } from "astro:assets";
 
           <li class="pb-3.5">
             I draw inspiration from projects like <a
+              target="_blank"
+              rel="noopener noreferrer"
               href="https://www.youtube.com/playlist?list=PLnuhp3Xd9PYTt6svyQPyRO_AAuMWGxPzU"
               >Handmade Hero</a
             > and communities like <a
+              target="_blank"
+              rel="noopener noreferrer"
               href="https://www.youtube.com/@TsodingDaily">Tsoding Daily</a
             >, which have shaped my philosophy of writing code that is
             intentional, efficient, and built from the ground up with clarity in
@@ -75,13 +88,17 @@ import { Image } from "astro:assets";
         <ul class="w-[80%] list-[square] list-outside pl-3.5 pb-7">
           <li class="pb-3.5">
             <a
+              target="_blank"
+              rel="noopener noreferrer"
               class="font-bold italic [font-variant:small-caps]"
               href="https://github.com/lith-x/Capstone-project"
               >Capstone Project — Northrop Grumman</a
             >
             — Collaborated with a team to develop a plugin for the Android application
-            <a href="https://tak.gov/">ATAK</a>, enabling geolocation of devices
-            outside the network via Bluetooth signaling.
+            <a target="_blank" rel="noopener noreferrer" href="https://tak.gov/"
+              >ATAK</a
+            >, enabling geolocation of devices outside the network via Bluetooth
+            signaling.
 
             <ul class="ml-4 list-[square]">
               <li>Tech: Java, Android SDK, Bluetooth APIs</li>
@@ -93,6 +110,8 @@ import { Image } from "astro:assets";
           </li>
           <li class="pb-3.5">
             <a
+              target="_blank"
+              rel="noopener noreferrer"
               class="font-bold italic [font-variant:small-caps]"
               href="https://github.com/lith-x/leetcode">LeetCode Repository</a
             >
@@ -108,26 +127,35 @@ import { Image } from "astro:assets";
           </li>
           <li class="pb-3.5">
             <a
+              target="_blank"
+              rel="noopener noreferrer"
               class="font-bold italic [font-variant:small-caps]"
               href="https://github.com/lith-x/storyboard-web"
               >Storyboard Web App</a
-            > — A WIP all-in-one <a href="https://osu.ppy.sh/">osu!</a> storyboarding
-            platform.
+            > — A WIP all-in-one <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://osu.ppy.sh/">osu!</a
+            > storyboarding platform.
             <ul class="ml-4 list-[square]">
               <li>Tech: Svelte, Tailwind, Typescript, PixiJS</li>
               <li>
                 Focus: Designing an elegant, feature-complete, and
                 platform-independent application that will enable a niche group
                 of creative spirits to more effectively develop <a
+                  target="_blank"
+                  rel="noopener noreferrer"
                   href="https://osu.ppy.sh/wiki/en/Storyboard">storyboards</a
                 >.
               </li>
             </ul>
           </li>
           <li class="pb-45">
-            <span class="font-bold italic [font-variant:small-caps]"
-              >This Site</span
-            > — Source available, see link at the bottom left.
+            <a
+              rel="noopener noreferrer"
+              href="https://github.com/lith-x/lith-x.github.io/"
+              class="font-bold italic [font-variant:small-caps]">This Site</a
+            >
             <ul class="ml-4 list-[square]">
               <li>Tech: Astro, Tailwind, Typescript, WebGL</li>
               <li>
@@ -137,9 +165,11 @@ import { Image } from "astro:assets";
             </ul>
           </li>
         </ul>
-        <div class="fixed bottom-1 left-1 text-[1em] text-violet-300 italic">
-          made by me! <a href="https://github.com/lith-x/lith-x.github.io/"
-            >source</a
+        <div class="fixed bottom-1 left-1 text-[1em] text-violet-300 italic opacity-50">
+          made by me! <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://github.com/lith-x/lith-x.github.io/">source</a
           >
         </div>
         <script>

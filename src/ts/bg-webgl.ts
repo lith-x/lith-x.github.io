@@ -45,7 +45,7 @@ const CUBES_Y = 24;
 const CUBES_Z = 24;
 const CUBES_COUNT = (CUBES_X * CUBES_Y * CUBES_Z);
 
-const getGridLength = (x: number) => (Cube.INTERVAL * (x) - Cube.PADDING);
+const getGridLength = (x: number) => (Cube.INTERVAL * x - Cube.PADDING);
 const SIZE_X = getGridLength(CUBES_X);
 const SIZE_Y = getGridLength(CUBES_Y);
 const SIZE_Z = getGridLength(CUBES_Z);
@@ -65,13 +65,15 @@ const POINT_COUNT = 10;
 
 const cubeIdx = (x: number, y: number, z: number) => CUBES_X * CUBES_Y * z + CUBES_X * y + x;
 
-const v3scratch: [x: number, y: number, z: number] = [0, 0, 0];
+// benchmarked various methods of doing this function, it made little difference
+// turns out it makes a copy anyways regardless of const, oh well. 
+const v3Scratch: [x: number, y: number, z: number] = [0,0,0];
 const getVec3Idx = (idx: number) => {
     const base = idx * 3;
-    v3scratch[0] = base;
-    v3scratch[1] = base + 1;
-    v3scratch[2] = base + 2;
-    return v3scratch;
+    v3Scratch[0] = base;
+    v3Scratch[1] = base + 1;
+    v3Scratch[2] = base + 2;
+    return v3Scratch;
 };
 
 // -------------------- main --------------------
@@ -129,7 +131,7 @@ export const main = async () => {
         }
     };
 
-    const gridPositions = new Float32Array(CUBES_COUNT * 3);
+    const gridPositions = new Float32Array(CUBES_COUNT * 3); // float vec3
     const refPos = twgl.v3.create(X_MIN_CUBE_CENTER, Y_MIN_CUBE_CENTER, Z_MIN_CUBE_CENTER);
     for (let z = 0; z < CUBES_Z; z++) {
         refPos[1] = Y_MIN_CUBE_CENTER;
@@ -157,7 +159,7 @@ export const main = async () => {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.DEPTH_TEST);
     twgl.setUniforms(progInfo, {
-        u_view: twgl.m4.inverse(twgl.m4.lookAt([0, 0, maxGridSize * fieldOfView], [0, 0, 0], [0, 1, 0]))
+        u_view: twgl.m4.inverse(twgl.m4.lookAt([0, 0, maxGridSize * fieldOfView], CENTER, [0, 1, 0]))
     });
 
     let dt: number;
@@ -166,6 +168,7 @@ export const main = async () => {
     const points = new PointsArray(POINT_COUNT);
     let spawnTimer = PRNG.nextRange(Spawn.TIME.MIN, Spawn.TIME.MAX);
     const render = (time: number) => {
+        // --- update ---
         dt = (time - lastTime) / 1000;
         lastTime = time;
         cubeInstanceArray.reset();
@@ -190,14 +193,17 @@ export const main = async () => {
             for (let z = bbox.min.z; z < bbox.max.z; z++) {
                 for (let y = bbox.min.y; y < bbox.max.y; y++) {
                     for (let x = bbox.min.x; x < bbox.max.x; x++) {
-                        const [cx, cy, cz] = getVec3Idx(cubeIdx(x, y, z));
+                        // inlined: getVec3Idx(cubeIdx(x, y, z))
+                        const cx = (CUBES_X * CUBES_Y * z + CUBES_X * y + x) * 3;
+                        const cy = cx + 1;
+                        const cz = cy + 1;
                         const dx = Math.abs((points.positions[px] - gridPositions[cx]) / points.scales[px]);
                         const dy = Math.abs((points.positions[py] - gridPositions[cy]) / points.scales[py]);
                         const dz = Math.abs((points.positions[pz] - gridPositions[cz]) / points.scales[pz]);
                         const d = dx + dy + dz;
 
                         // octahedral shape with a linear falloff
-                        const sideLen = Math.max(0, Cube.SIZE * (1 - d));
+                        const sideLen = Cube.SIZE * (1 - d);
                         if (sideLen <= EPSILON)
                             continue;
 
@@ -211,6 +217,7 @@ export const main = async () => {
             }
         }
 
+        // --- render ---
         resized = twgl.resizeCanvasToDisplaySize(gl.canvas as HTMLCanvasElement);
         if (resized) {
             twgl.setUniforms(progInfo, {
@@ -289,22 +296,32 @@ class CubeInstanceArray {
     }
 
     public setPointData(x: number, y: number, z: number, r: number, g: number, b: number, size: number) {
-        // indexing directly to avoid constructing an array in hot loop.
-        const [ix, iy, iz] = getVec3Idx(this.count);
+        // This is in the hottest loop in the program, must be as fast as possible.
+        const ix = this.count * 3;
+        const iy = ix + 1;
+        const iz = iy + 1;
         this.instanceCenters[ix] = x;
         this.instanceCenters[iy] = y;
         this.instanceCenters[iz] = z;
 
-        const [ir, ig, ib] = getVec3Idx(this.count);
-        this.instanceColors[ir] = r;
-        this.instanceColors[ig] = g;
-        this.instanceColors[ib] = b;
+        this.instanceColors[ix] = r;
+        this.instanceColors[iy] = g;
+        this.instanceColors[iz] = b;
         this.instanceSizes[this.count] = size;
         this.count++;
     }
 
     public reset() { this.count = 0; }
 }
+
+// constants used for freelist, internal to PointsArray
+// hoisted out for readability
+const FL = Object.freeze({
+    HEAD: 0,
+    TAIL: 1,
+    END: -1,
+    SPAWNED: -2
+});
 
 class PointsArray {
     private data: ArrayBuffer;
@@ -318,12 +335,7 @@ class PointsArray {
     public activeIdx: Int32Array; // int32
     public directions: Int8Array; // char
 
-    // freelist constants, if name collisions become an issue wrap these in a frozen object
-    private static readonly HEAD_IDX = 0;
-    private static readonly TAIL_IDX = 1;
-    private static readonly LIST_END = -1;
-    private static readonly IS_SPAWNED = -2;
-    private freelist = new Int32Array([PointsArray.LIST_END, PointsArray.LIST_END]);
+    private freelist = new Int32Array([FL.END, FL.END]);
 
     constructor(poolSize: number) {
         this.count = poolSize;
@@ -356,22 +368,22 @@ class PointsArray {
         // initialize freelist
         for (let i = 0; i < poolSize - 1; i++)
             this.nextFreeOrSpawned[i] = i + 1;
-        this.nextFreeOrSpawned[poolSize - 1] = PointsArray.LIST_END;
-        this.freelist[PointsArray.HEAD_IDX] = 0;
-        this.freelist[1] = POINT_COUNT - 1;
+        this.nextFreeOrSpawned[poolSize - 1] = FL.END;
+        this.freelist[FL.HEAD] = 0;
+        this.freelist[FL.TAIL] = POINT_COUNT - 1;
     }
 
     public spawn() {
         // pop from freelist, return if none available
-        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END)
-            return PointsArray.LIST_END;
-        
-        const idx = this.freelist[PointsArray.HEAD_IDX];
-        
-        this.freelist[PointsArray.HEAD_IDX] = this.nextFreeOrSpawned[idx];
-        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END)
-            this.freelist[1] = PointsArray.LIST_END;
-        this.nextFreeOrSpawned[idx] = PointsArray.IS_SPAWNED;
+        if (this.freelist[FL.HEAD] == FL.END)
+            return FL.END;
+
+        const idx = this.freelist[FL.HEAD];
+
+        this.freelist[FL.HEAD] = this.nextFreeOrSpawned[idx];
+        if (this.freelist[FL.HEAD] == FL.END)
+            this.freelist[FL.TAIL] = FL.END;
+        this.nextFreeOrSpawned[idx] = FL.SPAWNED;
 
         // got the next available point, initialize
         const lerpVal = PRNG.nextRange(0, 1);
@@ -405,15 +417,15 @@ class PointsArray {
 
     public free(idx: number) {
         const [vx, vy, vz] = getVec3Idx(idx);
-        this.positions[vx] = Number.MAX_VALUE;
+        this.positions[vx] = Number.MAX_VALUE; // prevent small chance of flickering upon ege of free/respawn
         this.positions[vy] = Number.MAX_VALUE;
         this.positions[vz] = Number.MAX_VALUE;
-        this.nextFreeOrSpawned[idx] = PointsArray.LIST_END;
-        if (this.freelist[PointsArray.TAIL_IDX] != PointsArray.LIST_END)
-            this.nextFreeOrSpawned[this.freelist[PointsArray.TAIL_IDX]] = idx;
+        this.nextFreeOrSpawned[idx] = FL.END;
+        if (this.freelist[FL.TAIL] != FL.END)
+            this.nextFreeOrSpawned[this.freelist[FL.TAIL]] = idx;
         else
-            this.freelist[PointsArray.HEAD_IDX] = idx;
-        this.freelist[PointsArray.TAIL_IDX] = idx;
+            this.freelist[FL.HEAD] = idx;
+        this.freelist[FL.TAIL] = idx;
     }
 
     public getBoundingBox(idx: number) {
@@ -453,7 +465,7 @@ class PointsArray {
     }
 
     public isNotSpawned(idx: number) {
-        return this.nextFreeOrSpawned[idx] != PointsArray.IS_SPAWNED;
+        return this.nextFreeOrSpawned[idx] != FL.SPAWNED;
     }
 
     private getStartPos(idx: number) {
