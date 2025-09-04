@@ -179,7 +179,7 @@ export const main = async () => {
             if (points.isNotSpawned(i))
                 continue;
 
-            points.positions[points.activeIdx[i]] += dt * points.signs[i] * points.speeds[i];
+            points.positions[points.activeIdx[i]] += dt * points.speeds[i];
             if (points.isOutOfBounds(i)) {
                 points.free(i);
                 continue;
@@ -272,22 +272,19 @@ class CubeInstanceArray {
     private data: ArrayBuffer;
     public count = 0;
     public instanceCenters: Float32Array; // float vec3
-    public instanceColors: Float32Array; // float vec4
+    public instanceColors: Float32Array; // float vec3
     public instanceSizes: Float32Array; // float
 
     constructor(instanceNum: number, maxCubesPerPosition: number) {
         const instances = instanceNum * maxCubesPerPosition;
         const vec3Elts = 3 * instances;
-        const vec4Elts = 4 * instances;
-        this.data = new ArrayBuffer((vec3Elts + vec4Elts + instances) * Float32Array.BYTES_PER_ELEMENT);
+        this.data = new ArrayBuffer((vec3Elts * 2 + instances) * Float32Array.BYTES_PER_ELEMENT);
 
         let offset = 0;
         this.instanceCenters = new Float32Array(this.data, offset, vec3Elts);
         offset += vec3Elts * Float32Array.BYTES_PER_ELEMENT;
-
-        this.instanceColors = new Float32Array(this.data, offset, vec4Elts);
-        offset += vec4Elts * Float32Array.BYTES_PER_ELEMENT;
-
+        this.instanceColors = new Float32Array(this.data, offset, vec3Elts);
+        offset += vec3Elts * Float32Array.BYTES_PER_ELEMENT;
         this.instanceSizes = new Float32Array(this.data, offset, instances);
     }
 
@@ -320,7 +317,6 @@ class PointsArray {
     public nextFreeOrSpawned: Int32Array; // int32
     public activeIdx: Int32Array; // int32
     public directions: Int8Array; // char
-    public signs: Int8Array; // char (signed)
 
     // freelist constants, if name collisions become an issue wrap these in a frozen object
     private static readonly HEAD_IDX = 0;
@@ -339,7 +335,7 @@ class PointsArray {
             vec3Bytes * 3 + // positions, colors, scales
             floatBytes + // speeds
             int32Bytes * 2 + // nextFreeOrSpawned, activeIdx
-            int8Bytes * 2 // directions, signs
+            int8Bytes // directions
         );
 
         let offset = 0;
@@ -356,8 +352,6 @@ class PointsArray {
         this.activeIdx = new Int32Array(this.data, offset, poolSize);
         offset += int32Bytes;
         this.directions = new Int8Array(this.data, offset, poolSize);
-        offset += int8Bytes;
-        this.signs = new Int8Array(this.data, offset, poolSize);
 
         // initialize freelist
         for (let i = 0; i < poolSize - 1; i++)
@@ -368,36 +362,44 @@ class PointsArray {
     }
 
     public spawn() {
-        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END) return PointsArray.LIST_END;
+        // pop from freelist, return if none available
+        if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END)
+            return PointsArray.LIST_END;
+        
         const idx = this.freelist[PointsArray.HEAD_IDX];
+        
         this.freelist[PointsArray.HEAD_IDX] = this.nextFreeOrSpawned[idx];
         if (this.freelist[PointsArray.HEAD_IDX] == PointsArray.LIST_END)
             this.freelist[1] = PointsArray.LIST_END;
         this.nextFreeOrSpawned[idx] = PointsArray.IS_SPAWNED;
-        const lerpA = PRNG.nextRange(0, 1);
-        const lerpB = 1 - lerpA;
-        const [pr, pg, pb] = getVec3Idx(idx);
-        this.colors[pr] = (0xC7 / 255) * lerpA + (0x61 / 255) * lerpB;
-        this.colors[pg] = (0x51 / 255) * lerpA + (0x0C / 255) * lerpB;
-        this.colors[pb] = (0x08 / 255) * lerpA + (0xCF / 255) * lerpB;
 
-        const [bx, by, bz] = getVec3Idx(idx);
+        // got the next available point, initialize
+        const lerpVal = PRNG.nextRange(0, 1);
+        const oneMinusLerpVal = 1 - lerpVal;
+        const [px, py, pz] = getVec3Idx(idx);
+        this.colors[px] = (0xC7 / 255) * lerpVal + (0x61 / 255) * oneMinusLerpVal;
+        this.colors[py] = (0x51 / 255) * lerpVal + (0x0C / 255) * oneMinusLerpVal;
+        this.colors[pz] = (0x08 / 255) * lerpVal + (0xCF / 255) * oneMinusLerpVal;
+
         this.directions[idx] = 1 << (Math.trunc(Math.random() * Direction.LEN)) as DirVals;
-        this.signs[idx] = this.directions[idx] & (Direction.PX | Direction.PY | Direction.PZ) ? 1 : -1;
-        this.activeIdx[idx] = this.directions[idx] & (Direction.PX | Direction.NX) ? bx
-            : this.directions[idx] & (Direction.PY | Direction.NY) ? by : bz;
+        this.activeIdx[idx] = this.directions[idx] & (Direction.PX | Direction.NX) ? px
+            : this.directions[idx] & (Direction.PY | Direction.NY) ? py : pz;
 
-        this.speeds[idx] = PRNG.nextRange(Spawn.SPEED.MIN, Spawn.SPEED.MAX);
+        const sign = this.directions[idx] & (Direction.PX | Direction.PY | Direction.PZ) ? 1 : -1;
+        this.speeds[idx] = PRNG.nextRange(Spawn.SPEED.MIN, Spawn.SPEED.MAX) * sign;
 
         const pointRadius = PRNG.nextRange(Spawn.RADIUS.MIN, Spawn.RADIUS.MAX);
-        this.scales[bx] = pointRadius;
-        this.scales[by] = pointRadius;
-        this.scales[bz] = pointRadius;
+
+        this.scales[px] = pointRadius;
+        this.scales[py] = pointRadius;
+        this.scales[pz] = pointRadius;
         this.scales[this.activeIdx[idx]] = PRNG.nextRange(Spawn.LENGTH.MIN, Spawn.LENGTH.MAX);
-        this.positions[bx] = X_MIN_CUBE_CENTER + Math.trunc(CUBES_X * Math.random()) * Cube.INTERVAL;
-        this.positions[by] = Y_MIN_CUBE_CENTER + Math.trunc(CUBES_Y * Math.random()) * Cube.INTERVAL;
-        this.positions[bz] = Z_MIN_CUBE_CENTER + Math.trunc(CUBES_Z * Math.random()) * Cube.INTERVAL;
+
+        this.positions[px] = X_MIN_CUBE_CENTER + Math.trunc(CUBES_X * Math.random()) * Cube.INTERVAL;
+        this.positions[py] = Y_MIN_CUBE_CENTER + Math.trunc(CUBES_Y * Math.random()) * Cube.INTERVAL;
+        this.positions[pz] = Z_MIN_CUBE_CENTER + Math.trunc(CUBES_Z * Math.random()) * Cube.INTERVAL;
         this.positions[this.activeIdx[idx]] = this.getStartPos(idx);
+
         return idx;
     }
 

@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
-import githubLogo from "../../public/github-mark-white.svg";
+import githubLogo from "../../public/github-icon.svg";
+import linkedinLogo from "../../public/linkedin-icon.svg";
 import { Image } from "astro:assets";
 ---
 
@@ -19,17 +20,26 @@ import { Image } from "astro:assets";
     <div
       class="pl-[6vw] pt-[8vh] inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(139,92,246,0.25),_transparent_70%)]"
     >
-      <div class="flex">
-        <a class="self-center" href="https://github.com/lith-x">
-          <Image
-            src={githubLogo}
-            alt="GitHub Profile"
-            class="gh-logo glow-anim w-12 h-12 mr-4"
-          />
-        </a>
-        <h1 class="text-7xl glow-anim self-center font-[SUSE] font-thin">
+      <div class="flex md:flex-row flex-col items-start">
+        <h1 class="text-7xl glow-anim font-[SUSE] font-thin">
           Aaron Zandt
         </h1>
+        <div class="flex justify-center mt-0 flex-row gap-2 md:flex-col md:ml-4">
+          <a class="" href="https://github.com/lith-x">
+            <Image
+              src={githubLogo}
+              alt="GitHub Profile"
+              class="glow-anim w-7 h-7"
+            />
+          </a>
+          <a href="https://github.com/lith-x">
+            <Image
+              src={linkedinLogo}
+              alt="LinkedIn Profile"
+              class="glow-anim w-7 h-7"
+            />
+          </a>
+        </div>
       </div>
       <br />
       <div class="max-w-3xl font-[MPLUS1p]">

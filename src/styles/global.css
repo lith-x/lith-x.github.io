@@ -19,8 +19,8 @@ a {
 
 @font-face {
   font-family: SUSE;
-  src: url("/fonts/SUSE-VariableFont_wght.ttf") format("opentype");
-  font-weight: 100 800;
+  src: url("/fonts/SUSE-Thin.ttf") format("opentype");
+  font-weight: 100;
   font-style: normal;
   font-display: swap;
 }
