@@ -67,7 +67,7 @@ const cubeIdx = (x: number, y: number, z: number) => CUBES_X * CUBES_Y * z + CUB
 
 // benchmarked various methods of doing this function, it made little difference
 // turns out it makes a copy anyways regardless of const, oh well. 
-const v3Scratch: [x: number, y: number, z: number] = [0,0,0];
+const v3Scratch: [x: number, y: number, z: number] = [0, 0, 0];
 const getVec3Idx = (idx: number) => {
     const base = idx * 3;
     v3Scratch[0] = base;
